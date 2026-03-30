@@ -1,0 +1,13 @@
+sample_id,product,parameter,value,unit,date
+S001,Fuel_A,Water,12.5,mg/kg,2026-03-20
+S001,Fuel_A,Sulfur,7.2,mg/kg,2026-03-20
+S001,Fuel_A,Chloride,0.8,mg/kg,2026-03-20
+S001,Fuel_A,Ash,0.21,% m/m,2026-03-20
+S001,Fuel_A,Viscosity,4.9,cSt,2026-03-20
+S002,Fuel_B,Water,error,mg/kg,2026-03-21
+S002,Fuel_B,Sulfur,650,mg/kg,2026-03-21
+S002,Fuel_B,Chloride,1,mg/L,2026-03-21
+S002,Fuel_B,Ash,0.18,%m/m,2026-03-21
+S002,Fuel_B,Viscosity,5, cst ,bad_date
+S003,Fuel_C,Water,"14,8",mg / kg,2026-03-22
+S003,Fuel_C,Sulfur,5.4,mg/kg,2026-03-22
