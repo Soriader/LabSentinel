@@ -4,15 +4,16 @@ from pathlib import Path
 
 import pandas as pd
 
+from labsentinel.alerts import build_qc_alerts
 from labsentinel.cleaning import prepare_base_df
 from labsentinel.io_utils import create_run_dir, generate_run_id, save_dataframe
 from labsentinel.qc_rules import build_qc_flags
 
 
-def run_cleaning_and_qc(input_path: str) -> tuple[pd.DataFrame, Path]:
+def run_cleaning_and_qc(input_path: str) -> tuple[pd.DataFrame, pd.DataFrame, Path]:
     """
     Read raw laboratory data, clean it, apply QC rules,
-    and save the processed output into a timestamped run directory.
+    build QC alerts, and save outputs into a timestamped run directory.
     """
     path = Path(input_path)
 
@@ -23,16 +24,24 @@ def run_cleaning_and_qc(input_path: str) -> tuple[pd.DataFrame, Path]:
     df = prepare_base_df(df)
     df = build_qc_flags(df)
 
+    alerts_df = build_qc_alerts(df)
+
     run_id = generate_run_id()
     run_dir = create_run_dir(run_id)
 
     save_dataframe(df, run_dir / "samples_cleaned.csv")
+    save_dataframe(alerts_df, run_dir / "alerts_qc.csv")
 
-    return df, run_dir
+    return df, alerts_df, run_dir
 
 
 if __name__ == "__main__":
-    result_df, run_dir = run_cleaning_and_qc("data/raw/lab_measurements.csv")
+    result_df, alerts_df, run_dir = run_cleaning_and_qc("data/raw/lab_measurements.csv")
+
     print("Pipeline finished successfully.")
     print(f"Run directory: {run_dir}")
+    print("\nCleaned data preview:")
     print(result_df.head(10))
+
+    print("\nQC alerts preview:")
+    print(alerts_df.head(10))
