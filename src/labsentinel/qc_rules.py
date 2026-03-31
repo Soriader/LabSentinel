@@ -33,11 +33,21 @@ def apply_unit_rules(df: pd.DataFrame) -> pd.DataFrame:
 def apply_completeness_rules(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
 
-    required_cols = ["sample_id", "product", "parameter", "unit", "date_dt"]
-    for col in required_cols:
-        out[f"{col}_ok"] = out[col].notna().astype("boolean")
+    out["sample_id_present_ok"] = out["sample_id"].notna().astype("boolean")
+    out["product_present_ok"] = out["product"].notna().astype("boolean")
+    out["parameter_present_ok"] = out["parameter"].notna().astype("boolean")
+    out["unit_present_ok"] = out["unit"].notna().astype("boolean")
+    out["date_present_ok"] = out["date_dt"].notna().astype("boolean")
 
-    out["row_complete_ok"] = out[[f"{col}_ok" for col in required_cols]].all(axis=1).astype("boolean")
+    completeness_cols = [
+        "sample_id_present_ok",
+        "product_present_ok",
+        "parameter_present_ok",
+        "unit_present_ok",
+        "date_present_ok",
+    ]
+
+    out["row_complete_ok"] = out[completeness_cols].all(axis=1).astype("boolean")
     return out
 
 
@@ -57,12 +67,20 @@ def apply_value_range_rules(df: pd.DataFrame) -> pd.DataFrame:
         lambda p: VALUE_RANGES[p][1] if p in VALUE_RANGES else pd.NA
     )
 
-    out["value_in_range_ok"] = (
-        (out["value_num"] >= out["range_lower"]) &
-        (out["value_num"] <= out["range_upper"])
+    out["value_in_range_ok"] = pd.NA
+    out["value_in_range_ok"] = out["value_in_range_ok"].astype("boolean")
+
+    valid_mask = (
+        out["value_num"].notna() &
+        out["range_lower"].notna() &
+        out["range_upper"].notna()
+    )
+
+    out.loc[valid_mask, "value_in_range_ok"] = (
+        (out.loc[valid_mask, "value_num"] >= out.loc[valid_mask, "range_lower"]) &
+        (out.loc[valid_mask, "value_num"] <= out.loc[valid_mask, "range_upper"])
     ).astype("boolean")
 
-    out.loc[out["range_lower"].isna() | out["range_upper"].isna(), "value_in_range_ok"] = pd.NA
     return out
 
 
@@ -85,9 +103,10 @@ def build_qc_flags(df: pd.DataFrame) -> pd.DataFrame:
 
         for col in check_columns:
             value = row[col]
+
             if pd.isna(value):
                 failures.append(f"{col}:unknown")
-            elif value is False:
+            elif value == False:
                 failures.append(f"{col}:fail")
 
         return "ok" if not failures else "|".join(failures)
