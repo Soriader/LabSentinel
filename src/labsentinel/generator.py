@@ -45,6 +45,8 @@ ERROR_TYPES = [
     "missing_value",
     "bad_date",
     "out_of_range",
+    "contextual_shift",
+    "near_boundary_anomaly",
 ]
 
 
@@ -67,10 +69,43 @@ def generate_valid_value(parameter: str) -> float:
     rule = PARAMETER_RULES[parameter]
     return round(random.uniform(rule["min"], rule["max"]), 3)
 
+def generate_contextual_shift_value(parameter: str) -> float:
+    """
+    Generate a value that is still within the formal QC range,
+    but unusually high relative to the normal generated distribution.
+    """
+    rule = PARAMETER_RULES[parameter]
+    min_value = rule["min"]
+    max_value = rule["max"]
+
+    # Push value into the upper band of the allowed range
+    lower_soft_bound = min_value + 0.75 * (max_value - min_value)
+    upper_soft_bound = min_value + 0.95 * (max_value - min_value)
+
+    return round(random.uniform(lower_soft_bound, upper_soft_bound), 3)
+
+
+def generate_near_boundary_value(parameter: str) -> float:
+    """
+    Generate a value very close to the upper range boundary,
+    but still valid according to QC rules.
+    """
+    rule = PARAMETER_RULES[parameter]
+    min_value = rule["min"]
+    max_value = rule["max"]
+
+    if max_value == min_value:
+        return round(max_value, 3)
+
+    lower_bound = max_value - 0.03 * (max_value - min_value)
+    upper_bound = max_value - 0.001 * (max_value - min_value)
+
+    return round(random.uniform(lower_bound, upper_bound), 3)
+
 
 def inject_error(row: dict, error_type: str) -> dict:
     """
-    Inject a controlled error into a generated row.
+    Inject a controlled error or anomaly into a generated row.
     """
     parameter = row["parameter"]
 
@@ -88,7 +123,13 @@ def inject_error(row: dict, error_type: str) -> dict:
 
     elif error_type == "out_of_range":
         max_value = PARAMETER_RULES[parameter]["max"]
-        row["value"] = str(round(max_value * random.uniform(3.0, 8.0), 3))
+        row["value"] = str(round(max_value * random.uniform(1.2, 2.0), 3))
+
+    elif error_type == "contextual_shift":
+        row["value"] = str(generate_contextual_shift_value(parameter))
+
+    elif error_type == "near_boundary_anomaly":
+        row["value"] = str(generate_near_boundary_value(parameter))
 
     row["error_type"] = error_type
     row["is_injected_error"] = True
