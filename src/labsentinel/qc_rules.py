@@ -13,12 +13,12 @@ UNIT_RULES: Final[dict[str, str]] = {
     "Viscosity": "cSt",
 }
 
-VALUE_RANGES: Final[dict[str, tuple[float, float]]] = {
-    "Water": (0.0, 500.0),
-    "Sulfur": (0.0, 500.0),
-    "Chloride": (0.0, 100.0),
-    "Ash": (0.0, 5.0),
-    "Viscosity": (0.0, 100.0),
+VALUE_RANGES = {
+    "Water": (0.0, 50.0),
+    "Sulfur": (0.0, 20.0),
+    "Chloride": (0.0, 5.0),
+    "Ash": (0.0, 1.0),
+    "Viscosity": (1.0, 10.0),
 }
 
 
