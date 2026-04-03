@@ -8,6 +8,7 @@ from labsentinel.alerts import build_qc_alerts
 from labsentinel.cleaning import prepare_base_df
 from labsentinel.evaluation import build_qc_evaluation
 from labsentinel.features import prepare_ml_dataset
+from labsentinel.hybrid import build_hybrid_alerts, build_hybrid_evaluation
 from labsentinel.io_utils import create_run_dir, generate_run_id, save_dataframe, save_json
 from labsentinel.ml_evaluation import build_ml_evaluation
 from labsentinel.ml_model import build_ml_alerts, run_isolation_forest
@@ -17,11 +18,12 @@ from labsentinel.reporting import build_qc_summary
 
 def run_cleaning_and_qc(
     input_path: str,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict, dict, dict, Path]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict, dict, dict, dict, Path]:
     """
     Read raw laboratory data, clean it, apply QC rules,
     build QC alerts, summarize QC results, evaluate QC against injected errors,
     run ML anomaly detection on QC-passed rows, evaluate ML,
+    build hybrid alerts, evaluate hybrid,
     and save outputs.
     """
     path = Path(input_path)
@@ -42,23 +44,47 @@ def run_cleaning_and_qc(
     ml_alerts_df = build_ml_alerts(ml_scored_df)
     ml_evaluation = build_ml_evaluation(ml_scored_df)
 
+    hybrid_alerts_df = build_hybrid_alerts(qc_alerts_df, ml_alerts_df)
+    hybrid_evaluation = build_hybrid_evaluation(hybrid_alerts_df)
+
     run_id = generate_run_id()
     run_dir = create_run_dir(run_id)
 
     save_dataframe(df, run_dir / "samples_cleaned.csv")
     save_dataframe(qc_alerts_df, run_dir / "alerts_qc.csv")
     save_dataframe(ml_alerts_df, run_dir / "alerts_ml.csv")
+    save_dataframe(hybrid_alerts_df, run_dir / "alerts_hybrid.csv")
+
     save_json(summary, run_dir / "qc_summary.json")
     save_json(qc_evaluation, run_dir / "qc_evaluation.json")
     save_json(ml_evaluation, run_dir / "ml_evaluation.json")
+    save_json(hybrid_evaluation, run_dir / "hybrid_evaluation.json")
 
-    return df, qc_alerts_df, ml_alerts_df, summary, qc_evaluation, ml_evaluation, run_dir
+    return (
+        df,
+        qc_alerts_df,
+        ml_alerts_df,
+        hybrid_alerts_df,
+        summary,
+        qc_evaluation,
+        ml_evaluation,
+        hybrid_evaluation,
+        run_dir,
+    )
 
 
 if __name__ == "__main__":
-    result_df, qc_alerts_df, ml_alerts_df, summary, qc_evaluation, ml_evaluation, run_dir = run_cleaning_and_qc(
-        "data/raw/lab_measurements.csv"
-    )
+    (
+        result_df,
+        qc_alerts_df,
+        ml_alerts_df,
+        hybrid_alerts_df,
+        summary,
+        qc_evaluation,
+        ml_evaluation,
+        hybrid_evaluation,
+        run_dir,
+    ) = run_cleaning_and_qc("data/raw/lab_measurements.csv")
 
     print("Pipeline finished successfully.")
     print(f"Run directory: {run_dir}")
@@ -72,6 +98,9 @@ if __name__ == "__main__":
     print("\nML alerts preview:")
     print(ml_alerts_df.head(10))
 
+    print("\nHybrid alerts preview:")
+    print(hybrid_alerts_df.head(10))
+
     print("\nQC summary:")
     print(summary)
 
@@ -80,3 +109,6 @@ if __name__ == "__main__":
 
     print("\nML evaluation:")
     print(ml_evaluation)
+
+    print("\nHybrid evaluation:")
+    print(hybrid_evaluation)
