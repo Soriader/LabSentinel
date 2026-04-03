@@ -6,6 +6,7 @@ import pandas as pd
 
 from labsentinel.alerts import build_qc_alerts
 from labsentinel.cleaning import prepare_base_df
+from labsentinel.comparison import build_comparison_summary
 from labsentinel.evaluation import build_qc_evaluation
 from labsentinel.features import prepare_ml_dataset
 from labsentinel.hybrid import build_hybrid_alerts, build_hybrid_evaluation
@@ -18,13 +19,10 @@ from labsentinel.reporting import build_qc_summary
 
 def run_cleaning_and_qc(
     input_path: str,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict, dict, dict, dict, Path]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict, dict, dict, dict, dict, Path]:
     """
-    Read raw laboratory data, clean it, apply QC rules,
-    build QC alerts, summarize QC results, evaluate QC against injected errors,
-    run ML anomaly detection on QC-passed rows, evaluate ML,
-    build hybrid alerts, evaluate hybrid,
-    and save outputs.
+    Full LabSentinel pipeline:
+    cleaning + QC + ML + hybrid + comparison summary.
     """
     path = Path(input_path)
 
@@ -47,6 +45,14 @@ def run_cleaning_and_qc(
     hybrid_alerts_df = build_hybrid_alerts(qc_alerts_df, ml_alerts_df)
     hybrid_evaluation = build_hybrid_evaluation(hybrid_alerts_df)
 
+    comparison_summary = build_comparison_summary(
+        full_df=df,
+        qc_summary=summary,
+        qc_evaluation=qc_evaluation,
+        ml_evaluation=ml_evaluation,
+        hybrid_alerts_df=hybrid_alerts_df,
+    )
+
     run_id = generate_run_id()
     run_dir = create_run_dir(run_id)
 
@@ -59,6 +65,7 @@ def run_cleaning_and_qc(
     save_json(qc_evaluation, run_dir / "qc_evaluation.json")
     save_json(ml_evaluation, run_dir / "ml_evaluation.json")
     save_json(hybrid_evaluation, run_dir / "hybrid_evaluation.json")
+    save_json(comparison_summary, run_dir / "comparison_summary.json")
 
     return (
         df,
@@ -69,6 +76,7 @@ def run_cleaning_and_qc(
         qc_evaluation,
         ml_evaluation,
         hybrid_evaluation,
+        comparison_summary,
         run_dir,
     )
 
@@ -83,6 +91,7 @@ if __name__ == "__main__":
         qc_evaluation,
         ml_evaluation,
         hybrid_evaluation,
+        comparison_summary,
         run_dir,
     ) = run_cleaning_and_qc("data/raw/lab_measurements.csv")
 
@@ -112,3 +121,6 @@ if __name__ == "__main__":
 
     print("\nHybrid evaluation:")
     print(hybrid_evaluation)
+
+    print("\nComparison summary:")
+    print(comparison_summary)
