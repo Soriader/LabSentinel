@@ -17,6 +17,7 @@ from labsentinel.io_utils import create_run_dir, generate_run_id, save_dataframe
 from labsentinel.ml_evaluation import build_ml_evaluation
 from labsentinel.ml_model import build_ml_alerts, run_isolation_forest
 from labsentinel.qc_rules import build_qc_flags
+from labsentinel.ranking_metrics import build_ranking_metrics
 from labsentinel.reporting import build_qc_summary
 
 
@@ -40,7 +41,7 @@ def parse_args() -> argparse.Namespace:
         "--k",
         type=int,
         default=50,
-        help="Top-K ML alerts to keep.",
+        help="Top-K ML alerts to keep and evaluate.",
     )
     return parser.parse_args()
 
@@ -54,10 +55,10 @@ def run_cleaning_and_qc(
     input_path: str,
     seed: int = 42,
     k: int = 50,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict, dict, dict, dict, dict, Path]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict, dict, dict, dict, dict, dict, Path]:
     """
     Full LabSentinel pipeline:
-    cleaning + QC + ML + hybrid + comparison summary.
+    cleaning + QC + ML + hybrid + comparison summary + ranking metrics.
     """
     set_seed(seed)
 
@@ -96,6 +97,12 @@ def run_cleaning_and_qc(
         hybrid_alerts_df=hybrid_alerts_df,
     )
 
+    ranking_metrics = build_ranking_metrics(
+        ml_alerts_df=ml_alerts_df,
+        hybrid_alerts_df=hybrid_alerts_df,
+        k=k,
+    )
+
     run_id = generate_run_id()
     run_dir = create_run_dir(run_id)
 
@@ -115,6 +122,7 @@ def run_cleaning_and_qc(
     save_json(ml_evaluation, run_dir / "ml_evaluation.json")
     save_json(hybrid_evaluation, run_dir / "hybrid_evaluation.json")
     save_json(comparison_summary, run_dir / "comparison_summary.json")
+    save_json(ranking_metrics, run_dir / "ranking_metrics.json")
     save_json(run_config, run_dir / "run_config.json")
 
     return (
@@ -127,6 +135,7 @@ def run_cleaning_and_qc(
         ml_evaluation,
         hybrid_evaluation,
         comparison_summary,
+        ranking_metrics,
         run_dir,
     )
 
@@ -144,6 +153,7 @@ if __name__ == "__main__":
         ml_evaluation,
         hybrid_evaluation,
         comparison_summary,
+        ranking_metrics,
         run_dir,
     ) = run_cleaning_and_qc(
         input_path=args.input,
@@ -171,3 +181,6 @@ if __name__ == "__main__":
 
     print("\nComparison summary:")
     print(comparison_summary)
+
+    print("\nRanking metrics:")
+    print(ranking_metrics)
