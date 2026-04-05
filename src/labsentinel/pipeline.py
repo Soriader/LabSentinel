@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import argparse
+import random
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from labsentinel.alerts import build_qc_alerts
@@ -17,13 +20,47 @@ from labsentinel.qc_rules import build_qc_flags
 from labsentinel.reporting import build_qc_summary
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run LabSentinel QC + ML + Hybrid pipeline."
+    )
+    parser.add_argument(
+        "--input",
+        type=str,
+        default="data/raw/lab_measurements.csv",
+        help="Input CSV path.",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for reproducibility.",
+    )
+    parser.add_argument(
+        "--k",
+        type=int,
+        default=50,
+        help="Top-K ML alerts to keep.",
+    )
+    return parser.parse_args()
+
+
+def set_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+
+
 def run_cleaning_and_qc(
     input_path: str,
+    seed: int = 42,
+    k: int = 50,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict, dict, dict, dict, dict, Path]:
     """
     Full LabSentinel pipeline:
     cleaning + QC + ML + hybrid + comparison summary.
     """
+    set_seed(seed)
+
     path = Path(input_path)
 
     if not path.exists():
@@ -40,6 +77,12 @@ def run_cleaning_and_qc(
     ml_source_df, ml_features_df = prepare_ml_dataset(df)
     ml_scored_df = run_isolation_forest(ml_source_df, ml_features_df)
     ml_alerts_df = build_ml_alerts(ml_scored_df)
+
+    if "anomaly_score" in ml_alerts_df.columns:
+        ml_alerts_df = ml_alerts_df.sort_values(by="anomaly_score", ascending=True).head(k).copy()
+    else:
+        ml_alerts_df = ml_alerts_df.head(k).copy()
+
     ml_evaluation = build_ml_evaluation(ml_scored_df)
 
     hybrid_alerts_df = build_hybrid_alerts(qc_alerts_df, ml_alerts_df)
@@ -56,6 +99,12 @@ def run_cleaning_and_qc(
     run_id = generate_run_id()
     run_dir = create_run_dir(run_id)
 
+    run_config = {
+        "input_path": str(path),
+        "seed": seed,
+        "k": k,
+    }
+
     save_dataframe(df, run_dir / "samples_cleaned.csv")
     save_dataframe(qc_alerts_df, run_dir / "alerts_qc.csv")
     save_dataframe(ml_alerts_df, run_dir / "alerts_ml.csv")
@@ -66,6 +115,7 @@ def run_cleaning_and_qc(
     save_json(ml_evaluation, run_dir / "ml_evaluation.json")
     save_json(hybrid_evaluation, run_dir / "hybrid_evaluation.json")
     save_json(comparison_summary, run_dir / "comparison_summary.json")
+    save_json(run_config, run_dir / "run_config.json")
 
     return (
         df,
@@ -82,6 +132,8 @@ def run_cleaning_and_qc(
 
 
 if __name__ == "__main__":
+    args = parse_args()
+
     (
         result_df,
         qc_alerts_df,
@@ -93,22 +145,17 @@ if __name__ == "__main__":
         hybrid_evaluation,
         comparison_summary,
         run_dir,
-    ) = run_cleaning_and_qc("data/raw/lab_measurements.csv")
+    ) = run_cleaning_and_qc(
+        input_path=args.input,
+        seed=args.seed,
+        k=args.k,
+    )
 
     print("Pipeline finished successfully.")
     print(f"Run directory: {run_dir}")
-
-    print("\nCleaned data preview:")
-    print(result_df.head(10))
-
-    print("\nQC alerts preview:")
-    print(qc_alerts_df.head(10))
-
-    print("\nML alerts preview:")
-    print(ml_alerts_df.head(10))
-
-    print("\nHybrid alerts preview:")
-    print(hybrid_alerts_df.head(10))
+    print(f"Seed: {args.seed}")
+    print(f"Input: {args.input}")
+    print(f"Top-K ML alerts: {args.k}")
 
     print("\nQC summary:")
     print(summary)

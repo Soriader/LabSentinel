@@ -1,206 +1,174 @@
 from __future__ import annotations
 
+import argparse
 import random
-from datetime import datetime, timedelta
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 
-RAW_DIR = Path("data/raw")
-OUTPUT_FILE = RAW_DIR / "lab_measurements.csv"
+PRODUCTS = ["Fuel_A", "Fuel_B", "Fuel_C"]
+PARAMETERS = ["Water", "Sulfur", "Chloride", "Ash", "Viscosity"]
 
-PARAMETER_RULES = {
-    "Water": {
-        "unit": "mg/kg",
-        "min": 0.0,
-        "max": 50.0,
-    },
-    "Sulfur": {
-        "unit": "mg/kg",
-        "min": 0.0,
-        "max": 20.0,
-    },
-    "Chloride": {
-        "unit": "mg/kg",
-        "min": 0.0,
-        "max": 5.0,
-    },
-    "Ash": {
-        "unit": "% m/m",
-        "min": 0.0,
-        "max": 1.0,
-    },
-    "Viscosity": {
-        "unit": "cSt",
-        "min": 1.0,
-        "max": 10.0,
-    },
+UNIT_RULES = {
+    "Water": "mg/kg",
+    "Sulfur": "mg/kg",
+    "Chloride": "mg/kg",
+    "Ash": "% m/m",
+    "Viscosity": "cSt",
 }
 
-PRODUCTS = ["Fuel_A", "Fuel_B", "Fuel_C"]
 
-ERROR_TYPES = [
-    "unit_mismatch",
-    "missing_value",
-    "bad_date",
-    "out_of_range",
-    "contextual_shift",
-    "near_boundary_anomaly",
-]
-
-
-def random_date(start_date: datetime, end_date: datetime) -> str:
-    """
-    Generate a random ISO date string between two datetimes.
-    """
-    delta = end_date - start_date
-    random_days = random.randint(0, delta.days)
-    random_seconds = random.randint(0, 24 * 60 * 60 - 1)
-
-    dt = start_date + timedelta(days=random_days, seconds=random_seconds)
-    return dt.strftime("%Y-%m-%d")
-
-
-def generate_valid_value(parameter: str) -> float:
-    """
-    Generate a valid numeric value for a given parameter.
-    """
-    rule = PARAMETER_RULES[parameter]
-    return round(random.uniform(rule["min"], rule["max"]), 3)
-
-def generate_contextual_shift_value(parameter: str) -> float:
-    """
-    Generate a value that is still within the formal QC range,
-    but unusually high relative to the normal generated distribution.
-    """
-    rule = PARAMETER_RULES[parameter]
-    min_value = rule["min"]
-    max_value = rule["max"]
-
-    # Push value into the upper band of the allowed range
-    lower_soft_bound = min_value + 0.75 * (max_value - min_value)
-    upper_soft_bound = min_value + 0.95 * (max_value - min_value)
-
-    return round(random.uniform(lower_soft_bound, upper_soft_bound), 3)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Generate synthetic laboratory measurements dataset."
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for reproducible generation.",
+    )
+    parser.add_argument(
+        "--rows",
+        type=int,
+        default=500,
+        help="Number of rows to generate.",
+    )
+    parser.add_argument(
+        "--out",
+        type=str,
+        default="data/raw/lab_measurements.csv",
+        help="Output CSV path.",
+    )
+    return parser.parse_args()
 
 
-def generate_near_boundary_value(parameter: str) -> float:
-    """
-    Generate a value very close to the upper range boundary,
-    but still valid according to QC rules.
-    """
-    rule = PARAMETER_RULES[parameter]
-    min_value = rule["min"]
-    max_value = rule["max"]
-
-    if max_value == min_value:
-        return round(max_value, 3)
-
-    lower_bound = max_value - 0.03 * (max_value - min_value)
-    upper_bound = max_value - 0.001 * (max_value - min_value)
-
-    return round(random.uniform(lower_bound, upper_bound), 3)
-
-
-def inject_error(row: dict, error_type: str) -> dict:
-    """
-    Inject a controlled error or anomaly into a generated row.
-    """
-    parameter = row["parameter"]
-
-    if error_type == "unit_mismatch":
-        wrong_units = ["mg/L", "ppm", "%", "cP", "unknown"]
-        valid_unit = PARAMETER_RULES[parameter]["unit"]
-        candidates = [u for u in wrong_units if u != valid_unit]
-        row["unit"] = random.choice(candidates)
-
-    elif error_type == "missing_value":
-        row["value"] = ""
-
-    elif error_type == "bad_date":
-        row["date"] = "bad_date"
-
-    elif error_type == "out_of_range":
-        max_value = PARAMETER_RULES[parameter]["max"]
-        row["value"] = str(round(max_value * random.uniform(1.2, 2.0), 3))
-
-    elif error_type == "contextual_shift":
-        row["value"] = str(generate_contextual_shift_value(parameter))
-
-    elif error_type == "near_boundary_anomaly":
-        row["value"] = str(generate_near_boundary_value(parameter))
-
-    row["error_type"] = error_type
-    row["is_injected_error"] = True
-
-    return row
-
-
-def generate_dataset(
-    n_samples: int = 100,
-    error_rate: float = 0.15,
-    seed: int = 42,
-) -> pd.DataFrame:
-    """
-    Generate a synthetic laboratory dataset with controlled injected errors.
-
-    Parameters:
-    - n_samples: number of sample groups
-    - error_rate: fraction of rows that should contain injected errors
-    - seed: random seed for reproducibility
-    """
+def set_seed(seed: int) -> None:
     random.seed(seed)
+    np.random.seed(seed)
 
-    start_date = datetime(2026, 1, 1)
-    end_date = datetime(2026, 3, 31)
 
-    rows: list[dict] = []
+def generate_base_value(parameter: str) -> float:
+    if parameter == "Water":
+        return round(np.random.uniform(5, 20), 3)
+    if parameter == "Sulfur":
+        return round(np.random.uniform(3, 7), 3)
+    if parameter == "Chloride":
+        return round(np.random.uniform(0.2, 2.5), 3)
+    if parameter == "Ash":
+        return round(np.random.uniform(0.05, 0.5), 3)
+    if parameter == "Viscosity":
+        return round(np.random.uniform(2, 7), 3)
+    raise ValueError(f"Unsupported parameter: {parameter}")
 
-    parameters = list(PARAMETER_RULES.keys())
 
-    for sample_number in range(1, n_samples + 1):
-        sample_id = f"S{sample_number:04d}"
+def inject_error(
+    value: float,
+    parameter: str,
+    unit: str,
+    date_str: str,
+) -> tuple[str, str, str, bool, str]:
+    """
+    Returns:
+    value_str, unit, date_str, is_injected_error, error_type
+    """
+    error_roll = random.random()
+
+    if error_roll < 0.03:
+        return "", unit, date_str, True, "missing_value"
+
+    if error_roll < 0.05:
+        wrong_unit = "mg/L" if unit != "mg/L" else "unknown"
+        return str(value), wrong_unit, date_str, True, "unit_mismatch"
+
+    if error_roll < 0.07:
+        return str(value), unit, "bad_date", True, "bad_date"
+
+    if error_roll < 0.09:
+        boosted = round(value * random.uniform(3, 8), 3)
+        return str(boosted), unit, date_str, True, "out_of_range"
+
+    if error_roll < 0.12:
+        # soft anomaly close to upper bound
+        near_boundary_map = {
+            "Water": 49.0,
+            "Sulfur": 19.9,
+            "Chloride": 4.95,
+            "Ash": 0.98,
+            "Viscosity": 9.9,
+        }
+        return str(near_boundary_map[parameter]), unit, date_str, True, "near_boundary_anomaly"
+
+    if error_roll < 0.14:
+        contextual_shift_map = {
+            "Water": 42.0,
+            "Sulfur": 13.5,
+            "Chloride": 3.8,
+            "Ash": 0.75,
+            "Viscosity": 8.8,
+        }
+        return str(contextual_shift_map[parameter]), unit, date_str, True, "contextual_shift"
+
+    return str(value), unit, date_str, False, ""
+
+
+def generate_dataset(rows: int = 500, seed: int = 42) -> pd.DataFrame:
+    set_seed(seed)
+
+    records: list[dict[str, object]] = []
+
+    for i in range(1, rows + 1):
+        sample_id = f"S{i:04d}"
         product = random.choice(PRODUCTS)
-        date_value = random_date(start_date, end_date)
+        parameter = random.choice(PARAMETERS)
+        unit = UNIT_RULES[parameter]
 
-        for parameter in parameters:
-            value = generate_valid_value(parameter)
-            unit = PARAMETER_RULES[parameter]["unit"]
+        month = random.randint(1, 3)
+        day = random.randint(1, 28)
+        date_str = f"2026-{month:02d}-{day:02d}"
 
-            row = {
+        base_value = generate_base_value(parameter)
+
+        value_str, final_unit, final_date, is_error, error_type = inject_error(
+            value=base_value,
+            parameter=parameter,
+            unit=unit,
+            date_str=date_str,
+        )
+
+        records.append(
+            {
                 "sample_id": sample_id,
                 "product": product,
                 "parameter": parameter,
-                "value": str(value),
-                "unit": unit,
-                "date": date_value,
-                "is_injected_error": False,
-                "error_type": "",
+                "value": value_str,
+                "unit": final_unit,
+                "date": final_date,
+                "is_injected_error": is_error,
+                "error_type": error_type,
             }
+        )
 
-            if random.random() < error_rate:
-                error_type = random.choice(ERROR_TYPES)
-                row = inject_error(row, error_type)
-
-            rows.append(row)
-
-    return pd.DataFrame(rows)
+    return pd.DataFrame(records)
 
 
-def save_dataset(df: pd.DataFrame, output_path: Path = OUTPUT_FILE) -> None:
-    """
-    Save generated dataset to CSV.
-    """
+def save_dataset(df: pd.DataFrame, output_path: str | Path) -> Path:
+    output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output_path, index=False)
+    return output_path
 
 
 if __name__ == "__main__":
-    df = generate_dataset(n_samples=100, error_rate=0.15, seed=42)
-    save_dataset(df)
+    args = parse_args()
+
+    df = generate_dataset(rows=args.rows, seed=args.seed)
+    saved_path = save_dataset(df, args.out)
 
     print("Synthetic dataset generated successfully.")
     print(f"Rows: {len(df)}")
-    print(f"Output: {OUTPUT_FILE}")
+    print(f"Seed: {args.seed}")
+    print(f"Output: {saved_path}")
     print(df.head(10))
