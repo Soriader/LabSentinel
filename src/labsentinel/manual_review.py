@@ -3,35 +3,38 @@ from __future__ import annotations
 import pandas as pd
 
 
+FINAL_TEMPLATE_COLUMNS = [
+    "run",
+    "sample_id",
+    "product",
+    "parameter",
+    "unit",
+    "expected_unit",
+    "value_num",
+    "date",
+    "alert_source",
+    "anomaly_score",
+    "qc_status",
+    "is_injected_error",
+    "error_type",
+    "validator_label",
+    "validator_notes",
+]
+
+
 def build_manual_labels_template(
     hybrid_alerts_df: pd.DataFrame,
     run_id: str,
     k: int,
 ) -> pd.DataFrame:
     """
-    Build a manual review template from hybrid alerts.
+    Build a compact manual review template from hybrid alerts.
 
-    The template contains top-K hybrid alerts and empty columns
-    for human validation.
+    The template is intended for human validation, so it keeps only
+    the most relevant columns and appends empty annotation fields.
     """
     if hybrid_alerts_df.empty:
-        columns = [
-            "run",
-            "sample_id",
-            "product",
-            "parameter",
-            "unit",
-            "expected_unit",
-            "value_num",
-            "alert_source",
-            "anomaly_score",
-            "qc_status",
-            "is_injected_error",
-            "error_type",
-            "validator_label",
-            "validator_notes",
-        ]
-        return pd.DataFrame(columns=columns)
+        return pd.DataFrame(columns=FINAL_TEMPLATE_COLUMNS)
 
     template_df = hybrid_alerts_df.copy()
 
@@ -53,27 +56,20 @@ def build_manual_labels_template(
     if "qc_status" not in template_df.columns:
         template_df["qc_status"] = pd.NA
 
+    if "date" not in template_df.columns:
+        template_df["date"] = pd.NA
+
+    if "is_injected_error" not in template_df.columns:
+        template_df["is_injected_error"] = pd.NA
+
+    if "error_type" not in template_df.columns:
+        template_df["error_type"] = pd.NA
+
     template_df["validator_label"] = ""
     template_df["validator_notes"] = ""
 
-    preferred_columns = [
-        "run",
-        "sample_id",
-        "product",
-        "parameter",
-        "unit",
-        "expected_unit",
-        "value_num",
-        "alert_source",
-        "anomaly_score",
-        "qc_status",
-        "is_injected_error",
-        "error_type",
-        "validator_label",
-        "validator_notes",
-    ]
+    for col in FINAL_TEMPLATE_COLUMNS:
+        if col not in template_df.columns:
+            template_df[col] = pd.NA
 
-    existing_columns = [col for col in preferred_columns if col in template_df.columns]
-    remaining_columns = [col for col in template_df.columns if col not in existing_columns]
-
-    return template_df[existing_columns + remaining_columns].reset_index(drop=True)
+    return template_df[FINAL_TEMPLATE_COLUMNS].reset_index(drop=True)
