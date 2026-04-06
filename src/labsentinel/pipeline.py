@@ -14,6 +14,7 @@ from labsentinel.evaluation import build_qc_evaluation
 from labsentinel.features import prepare_ml_dataset
 from labsentinel.hybrid import build_hybrid_alerts, build_hybrid_evaluation
 from labsentinel.io_utils import create_run_dir, generate_run_id, save_dataframe, save_json
+from labsentinel.manual_review import build_manual_labels_template
 from labsentinel.ml_evaluation import build_ml_evaluation
 from labsentinel.ml_model import build_ml_alerts, run_isolation_forest
 from labsentinel.qc_rules import build_qc_flags
@@ -106,6 +107,12 @@ def run_cleaning_and_qc(
     run_id = generate_run_id()
     run_dir = create_run_dir(run_id)
 
+    manual_labels_df = build_manual_labels_template(
+        hybrid_alerts_df=hybrid_alerts_df,
+        run_id=run_id,
+        k=k,
+    )
+
     run_config = {
         "input_path": str(path),
         "seed": seed,
@@ -116,6 +123,7 @@ def run_cleaning_and_qc(
     save_dataframe(qc_alerts_df, run_dir / "alerts_qc.csv")
     save_dataframe(ml_alerts_df, run_dir / "alerts_ml.csv")
     save_dataframe(hybrid_alerts_df, run_dir / "alerts_hybrid.csv")
+    save_dataframe(manual_labels_df, run_dir / "manual_labels_template.csv")
 
     save_json(summary, run_dir / "qc_summary.json")
     save_json(qc_evaluation, run_dir / "qc_evaluation.json")
@@ -184,3 +192,6 @@ if __name__ == "__main__":
 
     print("\nRanking metrics:")
     print(ranking_metrics)
+
+    print("\nManual labels template saved:")
+    print(run_dir / "manual_labels_template.csv")
