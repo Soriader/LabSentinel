@@ -1,28 +1,28 @@
 # Experiment Protocol — LabSentinel
 
-## 1. Cel eksperymentu
+## 1. Experiment Objective
 
-Celem projektu LabSentinel jest porównanie trzech podejść do wykrywania problemów jakości danych laboratoryjnych:
+The objective of the LabSentinel project is to compare three approaches to detecting data quality issues in laboratory data:
 
-1. **QC only** — podejście regułowe,
-2. **ML only** — podejście niesuperwizyjne,
-3. **Hybrid QC + ML** — połączenie reguł domenowych i modelu ML.
+1. **QC only** — rule-based approach,
+2. **ML only** — unsupervised approach,
+3. **Hybrid QC + ML** — combination of domain rules and an ML model.
 
-Projekt ma odpowiedzieć na pytanie badawcze:
+The project aims to answer the following research question:
 
-> Czy połączenie reguł jakości danych (QC) i modelu ML poprawia wykrywalność błędów pomiarowych względem samego podejścia regułowego?
+> Does combining data quality rules (QC) with an ML model improve the detection of measurement errors compared to a purely rule-based approach?
 
-Dodatkowe pytanie badawcze:
+Additional research question:
 
-> Jak mierzyć jakość alertów w sytuacji ograniczonych etykiet?
+> How to measure alert quality in a situation of limited labels?
 
 ---
 
-## 2. Zakres eksperymentu
+## 2. Experiment Scope
 
-Eksperyment obejmuje dane syntetyczne generowane lokalnie przez moduł `labsentinel.generator`.
+The experiment includes synthetic data generated locally by the `labsentinel.generator` module.
 
-Każdy rekord opisuje pojedynczy pomiar laboratoryjny i zawiera co najmniej:
+Each record describes a single laboratory measurement and contains at least:
 
 - `sample_id`
 - `product`
@@ -33,7 +33,7 @@ Każdy rekord opisuje pojedynczy pomiar laboratoryjny i zawiera co najmniej:
 - `is_injected_error`
 - `error_type`
 
-Obecny eksperyment obejmuje parametry:
+The current experiment includes the following parameters:
 
 - `Water`
 - `Sulfur`
@@ -41,7 +41,7 @@ Obecny eksperyment obejmuje parametry:
 - `Ash`
 - `Viscosity`
 
-Obecny eksperyment obejmuje typy błędów:
+The current experiment includes the following error types:
 
 ### Hard errors
 - `missing_value`
@@ -55,11 +55,11 @@ Obecny eksperyment obejmuje typy błędów:
 
 ---
 
-## 3. Dane wejściowe
+## 3. Input Data
 
-Dane wejściowe są generowane syntetycznie z użyciem kontrolowanego generatora i zapisywane do pliku CSV.
+The input data is generated synthetically using a controlled generator and saved to a CSV file.
 
-Domyślna komenda:
+Default command:
 
 ```bash
 python -m labsentinel.generator --seed 42 --rows 600 --out data/raw/lab_measurements.csv
