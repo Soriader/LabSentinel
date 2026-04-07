@@ -20,6 +20,7 @@ from labsentinel.ml_model import build_ml_alerts, run_isolation_forest
 from labsentinel.qc_rules import build_qc_flags
 from labsentinel.ranking_metrics import build_ranking_metrics
 from labsentinel.reporting import build_qc_summary
+from labsentinel.gx_runner import run_gx_validation
 
 
 def parse_args() -> argparse.Namespace:
@@ -56,7 +57,7 @@ def run_cleaning_and_qc(
     input_path: str,
     seed: int = 42,
     k: int = 50,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict, dict, dict, dict, dict, dict, Path]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict, dict, dict, dict, dict, dict, dict, Path]:
     """
     Full LabSentinel pipeline:
     cleaning + QC + ML + hybrid + comparison summary + ranking metrics.
@@ -106,6 +107,7 @@ def run_cleaning_and_qc(
 
     run_id = generate_run_id()
     run_dir = create_run_dir(run_id)
+    gx_result = run_gx_validation(df=df, run_dir=run_dir)
 
     manual_labels_df = build_manual_labels_template(
         hybrid_alerts_df=hybrid_alerts_df,
@@ -117,6 +119,7 @@ def run_cleaning_and_qc(
         "input_path": str(path),
         "seed": seed,
         "k": k,
+        "gx_enabled": True,
     }
 
     save_dataframe(df, run_dir / "samples_cleaned.csv")
@@ -144,6 +147,7 @@ def run_cleaning_and_qc(
         hybrid_evaluation,
         comparison_summary,
         ranking_metrics,
+        gx_result,
         run_dir,
     )
 
@@ -162,6 +166,7 @@ if __name__ == "__main__":
         hybrid_evaluation,
         comparison_summary,
         ranking_metrics,
+        gx_result,
         run_dir,
     ) = run_cleaning_and_qc(
         input_path=args.input,
@@ -195,3 +200,6 @@ if __name__ == "__main__":
 
     print("\nManual labels template saved:")
     print(run_dir / "manual_labels_template.csv")
+
+    print("\nGX validation:")
+    print(gx_result)
