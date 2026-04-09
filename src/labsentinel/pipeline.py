@@ -21,6 +21,7 @@ from labsentinel.qc_rules import build_qc_flags
 from labsentinel.ranking_metrics import build_ranking_metrics
 from labsentinel.reporting import build_qc_summary
 from labsentinel.gx_runner import run_gx_validation
+from labsentinel.tuning import run_contamination_tuning
 
 
 def parse_args() -> argparse.Namespace:
@@ -57,7 +58,7 @@ def run_cleaning_and_qc(
     input_path: str,
     seed: int = 42,
     k: int = 50,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict, dict, dict, dict, dict, dict, dict, Path]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict, dict, dict, dict, dict, dict, pd.DataFrame, dict, Path]:
     """
     Full LabSentinel pipeline:
     cleaning + QC + ML + hybrid + comparison summary + ranking metrics.
@@ -105,6 +106,12 @@ def run_cleaning_and_qc(
         k=k,
     )
 
+    tuning_df = run_contamination_tuning(
+        df=df,
+        k=k,
+        random_state=seed,
+    )
+
     run_id = generate_run_id()
     run_dir = create_run_dir(run_id)
     gx_result = run_gx_validation(df=df, run_dir=run_dir)
@@ -127,6 +134,7 @@ def run_cleaning_and_qc(
     save_dataframe(ml_alerts_df, run_dir / "alerts_ml.csv")
     save_dataframe(hybrid_alerts_df, run_dir / "alerts_hybrid.csv")
     save_dataframe(manual_labels_df, run_dir / "manual_labels_template.csv")
+    save_dataframe(tuning_df, run_dir / "tuning_contamination.csv")
 
     save_json(summary, run_dir / "qc_summary.json")
     save_json(qc_evaluation, run_dir / "qc_evaluation.json")
@@ -147,6 +155,7 @@ def run_cleaning_and_qc(
         hybrid_evaluation,
         comparison_summary,
         ranking_metrics,
+        tuning_df,
         gx_result,
         run_dir,
     )
@@ -166,6 +175,7 @@ if __name__ == "__main__":
         hybrid_evaluation,
         comparison_summary,
         ranking_metrics,
+        tuning_df,
         gx_result,
         run_dir,
     ) = run_cleaning_and_qc(
@@ -203,3 +213,6 @@ if __name__ == "__main__":
 
     print("\nGX validation:")
     print(gx_result)
+
+    print("\nContamination tuning:")
+    print(tuning_df)
