@@ -49,14 +49,15 @@ def load_json(path: Path) -> dict:
         return json.load(f)
 
 
-def save_plot(fig: plt.Figure, output_path: Path) -> None:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.tight_layout()
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
+def save_plot(fig: plt.Figure, output_paths: list[Path]) -> None:
+    for output_path in output_paths:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.tight_layout()
+        fig.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
 
 
-def plot_comparison_metrics(run_dir: Path, charts_dir: Path) -> None:
+def plot_comparison_metrics(run_dir: Path, output_dirs: list[Path]) -> None:
     comparison = load_json(run_dir / "comparison_summary.json")
 
     methods = ["QC", "ML", "Hybrid"]
@@ -76,17 +77,23 @@ def plot_comparison_metrics(run_dir: Path, charts_dir: Path) -> None:
     ax.set_title("Recall Comparison: QC vs ML vs Hybrid")
     ax.set_ylabel("Recall")
     ax.set_ylim(0, 1.05)
-    save_plot(fig, charts_dir / "comparison_recall.png")
+    save_plot(
+        fig,
+        [output_dir / "comparison_recall.png" for output_dir in output_dirs],
+    )
 
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.bar(methods, precision_values)
     ax.set_title("Precision Comparison: QC vs ML vs Hybrid")
     ax.set_ylabel("Precision")
     ax.set_ylim(0, 1.05)
-    save_plot(fig, charts_dir / "comparison_precision.png")
+    save_plot(
+        fig,
+        [output_dir / "comparison_precision.png" for output_dir in output_dirs],
+    )
 
 
-def plot_tuning_metrics(run_dir: Path, charts_dir: Path) -> None:
+def plot_tuning_metrics(run_dir: Path, output_dirs: list[Path]) -> None:
     path = run_dir / "tuning_contamination.csv"
     if not path.exists():
         return
@@ -117,10 +124,13 @@ def plot_tuning_metrics(run_dir: Path, charts_dir: Path) -> None:
     ax.set_ylabel("Score")
     ax.set_ylim(0, 1.05)
     ax.legend()
-    save_plot(fig, charts_dir / "tuning_contamination.png")
+    save_plot(
+        fig,
+        [output_dir / "tuning_contamination.png" for output_dir in output_dirs],
+    )
 
 
-def plot_ranking_metrics(run_dir: Path, charts_dir: Path) -> None:
+def plot_ranking_metrics(run_dir: Path, output_dirs: list[Path]) -> None:
     ranking = load_json(run_dir / "ranking_metrics.json")
 
     methods = ["ML", "Hybrid"]
@@ -134,10 +144,13 @@ def plot_ranking_metrics(run_dir: Path, charts_dir: Path) -> None:
     ax.set_title(f"Precision@{ranking['k']} Comparison")
     ax.set_ylabel("Precision@K")
     ax.set_ylim(0, 1.05)
-    save_plot(fig, charts_dir / "precision_at_k.png")
+    save_plot(
+        fig,
+        [output_dir / "precision_at_k.png" for output_dir in output_dirs],
+    )
 
 
-def plot_stability(run_dir: Path, charts_dir: Path) -> None:
+def plot_stability(run_dir: Path, output_dirs: list[Path]) -> None:
     path = run_dir / "stability_jaccard.csv"
     if not path.exists():
         return
@@ -155,22 +168,32 @@ def plot_stability(run_dir: Path, charts_dir: Path) -> None:
     ax.set_title("Top-K Alert Stability (Jaccard Similarity)")
     ax.set_ylabel("Jaccard Similarity")
     ax.set_ylim(0, 1.05)
-    save_plot(fig, charts_dir / "stability_jaccard.png")
+    save_plot(
+        fig,
+        [output_dir / "stability_jaccard.png" for output_dir in output_dirs],
+    )
 
 
 def main() -> None:
     args = parse_args()
     run_dir = get_run_dir(args.run_id)
-    charts_dir = run_dir / "charts"
 
-    plot_comparison_metrics(run_dir, charts_dir)
-    plot_tuning_metrics(run_dir, charts_dir)
-    plot_ranking_metrics(run_dir, charts_dir)
-    plot_stability(run_dir, charts_dir)
+    run_charts_dir = run_dir / "charts"
+    docs_charts_dir = Path("docs/charts")
+    output_dirs = [run_charts_dir, docs_charts_dir]
+
+    for output_dir in output_dirs:
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    plot_comparison_metrics(run_dir, output_dirs)
+    plot_tuning_metrics(run_dir, output_dirs)
+    plot_ranking_metrics(run_dir, output_dirs)
+    plot_stability(run_dir, output_dirs)
 
     print("Charts generated successfully.")
     print(f"Run directory: {run_dir}")
-    print(f"Charts directory: {charts_dir}")
+    print(f"Run charts directory: {run_charts_dir}")
+    print(f"Docs charts directory: {docs_charts_dir}")
 
 
 if __name__ == "__main__":
