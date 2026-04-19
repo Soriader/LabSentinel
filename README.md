@@ -1,11 +1,27 @@
 # LabSentinel — Hybrid Data Quality Monitoring (QC + ML)
 
+## 🚀 Key Result
+
+Hybrid QC + ML achieved:
+
+* **97% recall**
+* **81% precision**
+* **fully stable anomaly ranking**
+
+→ outperforming both standalone QC and ML approaches
+
+---
+
 ## Overview
 
 LabSentinel is an end-to-end data quality monitoring system for laboratory measurements.
-It combines **rule-based validation (QC)** with **unsupervised anomaly detection (ML)** to improve detection of data issues.
 
-The project demonstrates how hybrid approaches outperform traditional rule-based systems, especially for subtle anomalies.
+It combines:
+
+* **rule-based validation (QC)**
+* **unsupervised anomaly detection (ML)**
+
+to improve detection of both **hard data errors** and **subtle anomalies**.
 
 ---
 
@@ -13,21 +29,21 @@ The project demonstrates how hybrid approaches outperform traditional rule-based
 
 Traditional data quality systems rely on static rules:
 
-- range checks
-- completeness checks
-- unit validation
+* range checks
+* completeness checks
+* unit validation
 
 These approaches work well for **hard errors**, but fail to detect:
 
-- contextual anomalies
-- near-boundary issues
-- subtle distribution shifts
+* contextual anomalies
+* near-boundary issues
+* subtle distribution shifts
 
 In real-world systems, these undetected issues can lead to:
 
-- incorrect analytics
-- poor model performance
-- faulty business decisions
+* incorrect analytics
+* poor model performance
+* faulty business decisions
 
 ---
 
@@ -39,26 +55,30 @@ LabSentinel introduces a **hybrid detection architecture**:
 
 Detects deterministic issues:
 
-- missing values
-- incorrect units
-- invalid dates
-- out-of-range values
+* missing values
+* incorrect units
+* invalid dates
+* out-of-range values
 
 ### 2. ML Layer (Unsupervised)
 
 Detects non-obvious anomalies using:
 
-- relative position within expected range
-- parameter-level z-score
-- product-parameter z-score
+* relative position within expected range
+* parameter-level z-score
+* product-parameter z-score
+
+Model:
+
+* **Isolation Forest**
 
 ### 3. Hybrid Layer
 
 Combines QC + ML alerts to:
 
-- maximize recall
-- maintain acceptable precision
-- detect both hard errors and soft anomalies
+* maximize recall
+* maintain acceptable precision
+* detect both hard errors and soft anomalies
 
 ---
 
@@ -70,12 +90,13 @@ Pipeline:
 Generator → Cleaning → QC → Feature Engineering → ML → Hybrid → Evaluation
 ```
 
-Modules:
+Main modules:
 
-- `labsentinel.generator` — synthetic data generation with injected errors
-- `labsentinel.pipeline` — full processing pipeline
-- `labsentinel.features` — ML feature engineering
-- `labsentinel.evaluation` — metrics computation
+* `labsentinel.generator` — synthetic data generation with injected errors
+* `labsentinel.pipeline` — full processing pipeline
+* `labsentinel.features` — ML feature engineering
+* `labsentinel.evaluation` — metrics computation
+* `labsentinel.gx_runner` — data validation (Great Expectations)
 
 ---
 
@@ -101,52 +122,114 @@ data/processed/<run_id>/run_config.json
 
 ---
 
-## Results
+# 📊 Results & Key Findings
 
-### Detection Performance
+## 🔍 Performance Comparison
 
-| Approach | Recall | Precision | Notes |
-|----------|--------|----------|------|
-| QC       | 0.60   | 1.00     | Misses soft anomalies |
-| ML       | 0.93   | 0.62     | Strong on subtle patterns |
-| Hybrid   | **0.97** | **0.81** | Best overall performance |
-
----
-
-### Error Type Breakdown
-
-| Error Type              | QC   | ML   | Hybrid |
-|------------------------|------|------|--------|
-| bad_date               | 1.00 | —    | 1.00   |
-| missing_value          | 1.00 | —    | 1.00   |
-| unit_mismatch          | 1.00 | —    | 1.00   |
-| out_of_range           | 0.80 | 0.00 | 0.80   |
-| near_boundary_anomaly  | 0.00 | 1.00 | 1.00   |
-| contextual_shift       | 0.00 | 1.00 | 1.00   |
+| Approach | Recall   | Precision | Notes                     |
+| -------- | -------- | --------- | ------------------------- |
+| QC       | 0.60     | 1.00      | Misses soft anomalies     |
+| ML       | 0.93     | 0.62      | Strong on subtle patterns |
+| Hybrid   | **0.97** | **0.81**  | Best overall performance  |
 
 ---
 
-### Ranking Quality (Top-K)
+## 🎯 Precision@K (Top Alerts Quality)
 
-| Method  | Precision@50 |
-|---------|-------------|
-| ML      | 0.62        |
-| Hybrid  | **0.66**    |
+| Method | Precision@50 |
+| ------ | ------------ |
+| ML     | 0.62         |
+| Hybrid | **0.66**     |
 
----
-
-## Key Insights
-
-- Rule-based systems are insufficient for real-world anomaly detection
-- ML significantly improves detection of soft anomalies
-- Hybrid approach provides the best balance of recall and precision
-- Ranking (Top-K) enables efficient manual validation
+👉 Hybrid improves usefulness of top-ranked alerts for manual review.
 
 ---
 
-## Manual Review
+## ⚙️ Isolation Forest Tuning
 
-The system supports human-in-the-loop validation:
+| contamination | recall | precision | precision@k |
+| ------------- | ------ | --------- | ----------- |
+| 0.03          | 0.57   | 1.00      | 1.00        |
+| 0.05          | 0.93   | 1.00      | 1.00        |
+| 0.08          | 0.93   | 0.62      | 0.62        |
+| 0.10          | 0.93   | 0.50      | 0.56        |
+
+👉 **Optimal contamination = 0.05**
+
+* high recall
+* perfect precision
+* best ranking quality
+
+---
+
+## 🔁 Stability Analysis
+
+Top-K alert stability measured using **Jaccard similarity**:
+
+* 42 vs 123 → **1.0**
+* 42 vs 999 → **1.0**
+* 123 vs 999 → **1.0**
+
+👉 Model is **fully stable across random seeds**
+
+---
+
+## 🧠 Final Conclusion
+
+* QC ensures high precision but lacks flexibility
+* ML improves detection but introduces noise
+* Hybrid combines both strengths
+
+👉 **Hybrid QC + ML is the most effective strategy for real-world data quality monitoring**
+
+---
+
+## 📈 Example Charts
+
+> Charts generated from experiment results
+
+### Precision Comparison
+
+![Precision](docs/charts/comparison_precision.png)
+
+### Recall Comparison
+
+![Recall](docs/charts/comparison_recall.png)
+
+### Precision@K
+
+![Precision@K](docs/charts/precision_at_k.png)
+
+### Stability
+
+![Stability](docs/charts/stability_jaccard.png)
+
+### Tuning
+
+![Tuning](docs/charts/tuning_contamination.png)
+
+---
+
+## 🧪 Data Validation (Great Expectations)
+
+The pipeline includes automated validation using **Great Expectations**:
+
+* schema validation
+* completeness checks
+* consistency rules
+
+Outputs:
+
+```
+data/processed/<run_id>/gx/
+```
+
+* expectation suite
+* validation results
+
+---
+
+## 👨‍🔬 Manual Review (Human-in-the-loop)
 
 Generated file:
 
@@ -156,8 +239,8 @@ data/processed/<run_id>/manual_labels_template.csv
 
 Fields:
 
-- `validator_label` (true_issue / false_alarm / uncertain)
-- `validator_notes`
+* `validator_label` (true_issue / false_alarm / uncertain)
+* `validator_notes`
 
 Metric:
 
@@ -165,18 +248,40 @@ Metric:
 precision@k_manual = true_issues / k
 ```
 
-This simulates real production workflows.
+---
+
+## ⚙️ API
+
+The project exposes a simple API using FastAPI:
+
+### Endpoints:
+
+* `/alerts/latest` → latest detected anomalies
+* `/metrics/latest` → evaluation metrics
+
+Docs:
+
+```
+http://127.0.0.1:8000/docs
+```
+
+Run API:
+
+```bash
+uvicorn labsentinel.api:app --reload
+```
 
 ---
 
 ## Tech Stack
 
-- Python
-- Pandas
-- NumPy
-- Scikit-learn
-- CLI-based pipeline
-- Modular architecture
+* Python
+* Pandas
+* NumPy
+* Scikit-learn
+* Great Expectations
+* FastAPI
+* Poetry
 
 ---
 
@@ -184,21 +289,20 @@ This simulates real production workflows.
 
 This project demonstrates:
 
-- real-world data quality challenges
-- hybrid QC + ML system design
-- anomaly detection without labels
-- evaluation under limited ground truth
-- production-oriented thinking (CLI, reproducibility, metrics)
+* real-world data quality challenges
+* hybrid QC + ML system design
+* anomaly detection without labels
+* evaluation under limited ground truth
+* production-oriented thinking (CLI, API, reproducibility)
 
 ---
 
 ## Future Improvements
 
-- Replace heuristic ML with Isolation Forest / LOF
-- Add streaming (Kafka) integration
-- Build dashboard (e.g. Streamlit / Power BI)
-- Add alert prioritization model
-- Integrate real-world datasets
+* streaming pipeline (Kafka)
+* dashboard (Streamlit / Power BI)
+* alert prioritization model
+* integration with real datasets
 
 ---
 
@@ -208,7 +312,7 @@ Project created as part of AI / Data Engineering learning path.
 
 Focus areas:
 
-- Data Quality
-- Anomaly Detection
-- Data Engineering pipelines
-- Applied Machine Learning
+* Data Quality
+* Anomaly Detection
+* Data Engineering
+* Applied Machine Learning
