@@ -84,6 +84,9 @@ Combines QC + ML alerts to:
 
 ## Architecture
 
+The system is designed in a modular way, allowing independent extension of QC rules,
+ML models, and evaluation logic without impacting the overall pipeline.
+
 Pipeline:
 
 ```
@@ -180,6 +183,9 @@ Top-K alert stability measured using **Jaccard similarity**:
 * ML improves detection but introduces noise
 * Hybrid combines both strengths
 
+In production scenarios, this approach allows teams to detect critical issues earlier, 
+reduce manual validation effort, and improve downstream analytics reliability.
+
 👉 **Hybrid QC + ML is the most effective strategy for real-world data quality monitoring**
 
 ---
@@ -212,7 +218,8 @@ Top-K alert stability measured using **Jaccard similarity**:
 
 ## 🧪 Data Validation (Great Expectations)
 
-The pipeline includes automated validation using **Great Expectations**:
+The pipeline includes automated data validation using **Great Expectations**, 
+ensuring schema consistency and data quality before anomaly detection.
 
 * schema validation
 * completeness checks
@@ -261,15 +268,43 @@ The project exposes a simple API using FastAPI:
 
 Docs:
 
-```
+```text
 http://127.0.0.1:8000/docs
 ```
 
 Run API:
 
 ```bash
-uvicorn labsentinel.api:app --reload
+uvicorn labsentinel.api.main:app --reload
 ```
+
+## ⚡ How to run in 60 seconds
+
+```bash
+# 1. Clone repository
+git clone https://github.com/Soriader/LabSentinel.git
+cd LabSentinel
+
+# 2. Install dependencies
+poetry install
+
+# 3. Generate synthetic dataset
+poetry run python -m labsentinel.generator --seed 42 --rows 600 --out data/raw/lab_measurements.csv
+
+# 4. Run full pipeline (QC + ML + Hybrid)
+poetry run python -m labsentinel.pipeline --input data/raw/lab_measurements.csv --seed 42 --k 50
+
+# 5. Generate charts
+poetry run python -m labsentinel.plots
+
+# 6. Run API
+poetry run uvicorn labsentinel.api.main:app --reload
+```
+Open in browser:
+
+- API docs → http://127.0.0.1:8000/docs  
+- Latest alerts → http://127.0.0.1:8000/alerts/latest?type=hybrid  
+- Metrics → http://127.0.0.1:8000/metrics/latest  
 
 ---
 
@@ -316,3 +351,4 @@ Focus areas:
 * Anomaly Detection
 * Data Engineering
 * Applied Machine Learning
+
